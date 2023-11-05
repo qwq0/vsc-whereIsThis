@@ -1,0 +1,17 @@
+{
+    "name": "vsc-extension-whereisthis",
+    "publisher": "qwq0",
+    "version": "1.0.0",
+    "engines": {
+        "vscode": "^1.84.0"
+    },
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "main": "./dist/main.js",
+    "dependencies": {
+        "@types/vscode": "^1.84.0"
+    },
+    "repository": "https://github.com/qwq0/vscode-autoFormat",
+    "license": "MIT"
+}

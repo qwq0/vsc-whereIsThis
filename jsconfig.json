@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+        "allowJs": true,
+        "checkJs": true,
+        "module": "NodeNext",
+        "moduleResolution": "nodenext",
+        "lib": [
+            "ES2022",
+        ]
+    },
+    "exclude": [
+        "dist/*"
+    ]
+}
