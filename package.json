@@ -1,5 +1,7 @@
 {
     "name": "vsc-extension-whereisthis",
+    "displayName": "Where Is This",
+    "description": "Prevent getting lost in indentation",
     "publisher": "qwq0",
     "version": "1.0.0",
     "engines": {
