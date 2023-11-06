@@ -11,10 +11,10 @@ function getIndent(text)
 
     let indentSpace = (
         vscode.window.activeTextEditor != undefined ?
-        Number(vscode.window.activeTextEditor.options.indentSize):
-        4
+            Number(vscode.window.activeTextEditor.options.indentSize) :
+            4
     );
-    if(indentSpace == 0 || Number.isNaN(indentSpace))
+    if (indentSpace == 0 || Number.isNaN(indentSpace))
         indentSpace = 4;
 
     for (let i = 0; i < text.length; i++)
@@ -41,7 +41,7 @@ function genPromptText()
 {
     if (!vscode.window.activeTextEditor)
         return "";
-    if (vscode.workspace.getConfiguration("whereisthis").get("enable") != true)
+    if (!vscode.workspace.getConfiguration("whereisthis").get("enable"))
         return "";
     if (
         vscode.window.activeTextEditor.document.languageId != "javascript" &&
@@ -52,6 +52,13 @@ function genPromptText()
     let path = [];
     let activeLine = vscode.window.activeTextEditor.selection.active.line;
 
+    let enableDocComment = Boolean(vscode.workspace.getConfiguration("whereisthis").get("enableDocComment"));
+
+    let docCommentStartSymbol = "/**";
+    let docCommentEndSymbol = "*/";
+    let commentSymbol = "//";
+    let commentSymbolWithSpace = " // ";
+
     let indent = Infinity;
     let changeLine = -1;
     let changeLineHadComment = false;
@@ -60,7 +67,8 @@ function genPromptText()
     for (let i = activeLine; i >= 0; i--)
     {
         let nowText = vscode.window.activeTextEditor.document.lineAt(i).text;
-        if (nowText.trim() != "") // 非空行
+        let nowTextTrim = nowText.trim();
+        if (nowTextTrim != "") // 非空行
         {
             let nowIndent = getIndent(nowText);
             if (
@@ -68,22 +76,27 @@ function genPromptText()
                 ( // 当前行可能附属于减小缩进的行
                     nowIndent == indent &&
                     changeLine == i + 1 &&
-                    changeLineOnlyBrackets &&
-                    (!changeLineHadComment)
+                    (!changeLineHadComment) &&
+                    (
+                        changeLineOnlyBrackets ||
+                        nowTextTrim.slice(0, commentSymbol.length) == commentSymbol
+                    )
                 )
             )
-            {
-                if (nowIndent < indent)  // 当前行减小了缩进
+            { // 行内注释
+                if (
+                    nowIndent < indent ||  // 当前行减小了缩进
+                    changeLineOnlyBrackets
+                )
                 {
                     indent = nowIndent;
                     changeLine = i;
                 }
 
-                let commentStartSymbol = " // ";
-                let commentIndex = nowText.lastIndexOf(commentStartSymbol);
+                let commentIndex = nowText.lastIndexOf(commentSymbolWithSpace);
                 let commentText = (
                     commentIndex != -1 ?
-                        nowText.slice(commentIndex + commentStartSymbol.length) :
+                        nowText.slice(commentIndex + commentSymbolWithSpace.length) :
                         ""
                 );
 
@@ -93,15 +106,56 @@ function genPromptText()
                 }
 
                 changeLineHadComment = (commentIndex != -1);
-                changeLineOnlyBrackets = nowText.trim().split("").every(c => (
+                changeLineOnlyBrackets = nowTextTrim.split("").every(c => (
                     c == "{" ||
                     c == "[" ||
                     c == "("
                 ));
             }
+            else if (
+                enableDocComment &&
+                nowIndent == indent &&
+                changeLine == i + 1 &&
+                (!changeLineHadComment) &&
+                nowTextTrim == docCommentEndSymbol // 当前行是文档注释末
+            )
+            { // 文档注释
+                let docCommentStartLine = -1;
+
+                for (let j = i - 1; j >= 0; j--)
+                {
+                    let nowLine = vscode.window.activeTextEditor.document.lineAt(j).text;
+                    let nowLineTrim = nowLine.trim();
+                    if (nowLineTrim == docCommentStartSymbol)
+                    { // 文档注释开始处
+                        if (j + 1 < i)
+                        {
+                            let commentFirstLine = vscode.window.activeTextEditor.document.lineAt(j + 1).text;
+                            commentFirstLine = commentFirstLine.trim();
+                            if (commentFirstLine[0] == "*")
+                                commentFirstLine = commentFirstLine.slice(1);
+                            commentFirstLine = commentFirstLine.trim();
+                            if (commentFirstLine[0] != "@")
+                            {
+                                path.unshift(commentFirstLine);
+                            }
+                        }
+                        docCommentStartLine = j;
+                        break;
+                    }
+                }
+
+                if (docCommentStartLine != -1)
+                    i = docCommentStartLine;
+                else
+                    break;
+            }
         }
 
-        if (indent == 0)
+        if (
+            indent == 0 &&
+            changeLine != i
+        )
             break;
     }
 
