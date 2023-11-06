@@ -187,7 +187,7 @@ function getEmptyLineIndent(lineNum)
  */
 let decoration = null;
 let oldPromptText = "";
-let oldLine = 0;
+let oldPromptLine = 0;
 /** @type {NodeJS.Timeout} */
 let timeoutId = null;
 
@@ -200,13 +200,27 @@ function updatePrompt()
     {
         let promptText = genPromptText();
         let activeLine = vscode.window.activeTextEditor.selection.active.line;
+        let promptLine = activeLine;
+        switch (vscode.workspace.getConfiguration("whereisthis").get("promptedLocation"))
+        { // 提示文本显示位置
+            case "last line": {
+                if (promptLine > 0)
+                    promptLine--;
+                break;
+            }
+            case "next line": {
+                if (promptLine < vscode.window.activeTextEditor.document.lineCount - 1)
+                    promptLine++;
+                break;
+            }
+        }
 
         if (
-            oldLine != activeLine ||
+            oldPromptLine != promptLine ||
             oldPromptText != promptText
         )
         {
-            oldLine = activeLine;
+            oldPromptLine = promptLine;
             oldPromptText = promptText;
 
             if (decoration)
@@ -233,7 +247,7 @@ function updatePrompt()
                     }
                 });
 
-                let positionOfLineEnd = new vscode.Position(vscode.window.activeTextEditor.selection.active.line, 1e100);
+                let positionOfLineEnd = new vscode.Position(promptLine, 1e100);
                 vscode.window.activeTextEditor.setDecorations(decoration, [
                     new vscode.Range(
                         positionOfLineEnd,
