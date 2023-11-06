@@ -3,7 +3,7 @@
     "displayName": "Where Is This",
     "description": "Prevent getting lost in indentation",
     "publisher": "qwq0",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "engines": {
         "vscode": "^1.84.0"
     },
@@ -15,5 +15,39 @@
         "@types/vscode": "^1.84.0"
     },
     "repository": "https://github.com/qwq0/vsc-whereIsThis",
-    "license": "MIT"
+    "license": "MIT",
+    "contributes": {
+        "configuration": {
+            "title": "WhereIsThis",
+            "properties": {
+                "whereisthis.enable": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable the function of this extension."
+                },
+                "whereisthis.pathSeparator": {
+                    "type": "string",
+                    "default": ">",
+                    "description": "The separator used to split the path in the prompt.\n Default is \">\"."
+                },
+                "whereisthis.pathSeparatorSpace": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Add Spaces before and after the path separator."
+                },
+                "whereisthis.promptDistance": {
+                    "type": [ "number", "null" ],
+                    "default": null,
+                    "description": "Specifies how far the prompt text is from the end of the line. The unit is the font width."
+                },
+                "whereisthis.refreshInterval": {
+                    "type": "number",
+                    "default": 150,
+                    "minimum": 35,
+                    "maximum": 3000,
+                    "description": "Set the interval for detecting and refreshing the prompt text."
+                }
+            }
+        }
+    }
 }

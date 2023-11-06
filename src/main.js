@@ -8,7 +8,15 @@ import * as vscode from "vscode";
 function getIndent(text)
 {
     let ret = 0;
-    let indentSpace = 4;
+
+    let indentSpace = (
+        vscode.window.activeTextEditor != undefined ?
+        Number(vscode.window.activeTextEditor.options.indentSize):
+        4
+    );
+    if(indentSpace == 0 || Number.isNaN(indentSpace))
+        indentSpace = 4;
+
     for (let i = 0; i < text.length; i++)
     {
         if (text[i] == "\t")
@@ -32,6 +40,8 @@ function getIndent(text)
 function genPromptText()
 {
     if (!vscode.window.activeTextEditor)
+        return "";
+    if (vscode.workspace.getConfiguration("whereisthis").get("enable") != true)
         return "";
     if (
         vscode.window.activeTextEditor.document.languageId != "javascript" &&
@@ -95,7 +105,27 @@ function genPromptText()
             break;
     }
 
-    return path.join(" > ");
+    return path.join((
+        vscode.workspace.getConfiguration("whereisthis").get("pathSeparatorSpace") ?
+            (" " + vscode.workspace.getConfiguration("whereisthis").get("pathSeparator") + " ") :
+            vscode.workspace.getConfiguration("whereisthis").get("pathSeparator")
+    ));
+}
+
+/**
+ * 获取空行缩进
+ * @param {number} lineNum
+ * @returns {number}
+ */
+function getEmptyLineIndent(lineNum)
+{
+    for (let i = lineNum; i >= 0; i--)
+    {
+        let nowText = vscode.window.activeTextEditor.document.lineAt(i).text;
+        if (nowText.trim() != "") // 非空行
+            return getIndent(nowText);
+    }
+    return 0;
 }
 
 /**
@@ -105,36 +135,47 @@ let decoration = null;
 let oldPromptText = "";
 let oldLine = 0;
 /** @type {NodeJS.Timeout} */
-let intervalId = null;
+let timeoutId = null;
 
 /**
- * 激活时
- * @param {vscode.ExtensionContext} extContext
+ * 更新提示文本
  */
-export async function activate(extContext)
+function updatePrompt()
 {
-    intervalId = setInterval(() =>
+    if (vscode.window.activeTextEditor)
     {
-        if (vscode.window.activeTextEditor)
+        let promptText = genPromptText();
+        let activeLine = vscode.window.activeTextEditor.selection.active.line;
+
+        if (
+            oldLine != activeLine ||
+            oldPromptText != promptText
+        )
         {
-            let promptText = genPromptText();
+            oldLine = activeLine;
+            oldPromptText = promptText;
 
-            if (
-                oldLine != vscode.window.activeTextEditor.selection.active.line ||
-                oldPromptText != promptText
-            )
+            if (decoration)
             {
-                oldLine = vscode.window.activeTextEditor.selection.active.line;
-                oldPromptText = promptText;
+                decoration.dispose();
+                decoration = null;
+            }
 
-                if (decoration)
-                    decoration.dispose();
+            let promptDistance = vscode.workspace.getConfiguration("whereisthis").get("promptDistance");
+            if (promptDistance == null)
+                promptDistance = 3.5;
 
+            if (promptText != "")
+            {
                 decoration = vscode.window.createTextEditorDecorationType({
                     after: {
                         contentText: promptText,
                         color: "rgb(127, 127, 127, 0.8)",
-                        margin: "50px"
+                        margin: (
+                            vscode.window.activeTextEditor.document.lineAt(activeLine).text.trim() != "" ?
+                                promptDistance + "ch" :
+                                (getEmptyLineIndent(activeLine) * 4 + promptDistance) + "ch"
+                        )
                     }
                 });
 
@@ -147,7 +188,32 @@ export async function activate(extContext)
                 ]);
             }
         }
-    }, 150);
+    }
+}
+
+/**
+ * 激活时
+ * @param {vscode.ExtensionContext} extContext
+ */
+export async function activate(extContext)
+{
+    let loop = () =>
+    {
+        timeoutId = null;
+
+        try
+        {
+            updatePrompt();
+        }
+        catch (e)
+        { }
+
+        let refreshInterval = vscode.workspace.getConfiguration("whereisthis").get("refreshInterval");
+        refreshInterval = Math.max(10, refreshInterval);
+        refreshInterval = Math.min(10 * 1000, refreshInterval);
+        timeoutId = setTimeout(loop, refreshInterval);
+    };
+    timeoutId = setTimeout(loop, 500);
 }
 
 /**
@@ -155,10 +221,10 @@ export async function activate(extContext)
  */
 export function deactivate()
 {
-    if (intervalId)
+    if (timeoutId)
     {
-        clearInterval(intervalId);
-        intervalId = null;
+        clearInterval(timeoutId);
+        timeoutId = null;
     }
     if (decoration)
     {
