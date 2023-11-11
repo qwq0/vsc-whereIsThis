@@ -188,6 +188,7 @@ function getEmptyLineIndent(lineNum)
 let decoration = null;
 let oldPromptText = "";
 let oldPromptLine = 0;
+let oldPromptLineContent = "";
 /** @type {NodeJS.Timeout} */
 let timeoutId = null;
 
@@ -215,13 +216,17 @@ function updatePrompt()
             }
         }
 
+        let promptLineContent = vscode.window.activeTextEditor.document.lineAt(promptLine).text;
+
         if (
             oldPromptLine != promptLine ||
-            oldPromptText != promptText
+            oldPromptText != promptText ||
+            oldPromptLineContent != promptLineContent
         )
         {
             oldPromptLine = promptLine;
             oldPromptText = promptText;
+            oldPromptLineContent = promptLineContent;
 
             if (decoration)
             {
