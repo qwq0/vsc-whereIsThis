@@ -245,9 +245,9 @@ function updatePrompt()
                         contentText: promptText,
                         color: "rgb(127, 127, 127, 0.8)",
                         margin: (
-                            vscode.window.activeTextEditor.document.lineAt(activeLine).text.trim() != "" ?
+                            promptLineContent.trim() != "" ?
                                 promptDistance + "ch" :
-                                (getEmptyLineIndent(activeLine) * 4 + promptDistance) + "ch"
+                                (Math.max(0, getEmptyLineIndent(promptLine) * 4 - promptLineContent.length) + promptDistance) + "ch"
                         )
                     }
                 });
